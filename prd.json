@@ -39,7 +39,7 @@
       "id": "SNAP-003",
       "title": "Interactive Element Selector — Hover Highlight",
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want elements to be highlighted with a blue semi-transparent overlay as I hover over them so that I can visually identify which element I am about to capture.",
       "acceptanceCriteria": [
         "Content script enters 'selection mode' when triggered by the popup",
