@@ -67,7 +67,7 @@
       "id": "SNAP-005",
       "title": "Rendering Engine — DOM-to-Canvas via html2canvas",
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want the selected element to be rendered to a canvas exactly as it appears on screen so that print-protection CSS rules (e.g., @media print { display: none }) are completely bypassed.",
       "acceptanceCriteria": [
         "html2canvas.js is bundled and available in the content script context",

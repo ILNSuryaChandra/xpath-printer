@@ -1,6 +1,7 @@
 // content.js — Content script for Project Snapshot extension
 // Implements SNAP-003: Interactive Element Selector — Hover Highlight
 // Implements SNAP-004: Click to Select & Event Interception
+// Implements SNAP-005: Rendering Engine — DOM-to-Canvas via html2canvas
 
 console.log('[Project Snapshot] Content script loaded.');
 
@@ -8,6 +9,7 @@ console.log('[Project Snapshot] Content script loaded.');
 let selectionActive = false;
 let currentTarget = null;
 let selectedElement = null;  // SNAP-004: Persisted target for the rendering pipeline
+let renderedCanvas = null;   // SNAP-005: Canvas output from html2canvas
 
 // ─── Injected DOM elements ────────────────────────────────────────────────────
 let overlay = null;      // blue semi-transparent highlight box
@@ -155,6 +157,174 @@ function onSuppressEvent(e) {
   e.preventDefault();
 }
 
+// ─── SNAP-005: Rendering pipeline ────────────────────────────────────────────
+
+function createProcessingOverlay() {
+  const container = document.createElement('div');
+  container.id = 'snapshot-processing';
+  container.style.cssText = [
+    'position:fixed',
+    'top:0', 'left:0', 'right:0', 'bottom:0',
+    'z-index:2147483647',
+    'background:rgba(0,0,0,0.55)',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'flex-direction:column',
+    'gap:16px',
+    'backdrop-filter:blur(4px)',
+  ].join(';');
+
+  // Spinner
+  const spinner = document.createElement('div');
+  spinner.style.cssText = [
+    'width:48px', 'height:48px',
+    'border:4px solid rgba(255,255,255,0.2)',
+    'border-top-color:#3b82f6',
+    'border-radius:50%',
+    'animation:snapshot-spin 0.8s linear infinite',
+  ].join(';');
+
+  // keyframes
+  const style = document.createElement('style');
+  style.textContent = '@keyframes snapshot-spin{to{transform:rotate(360deg)}}';
+  container.appendChild(style);
+
+  // Label
+  const label = document.createElement('div');
+  label.textContent = 'Rendering element…';
+  label.style.cssText = [
+    'color:#f9fafb',
+    'font:500 15px/1.4 "Inter",system-ui,sans-serif',
+    'text-shadow:0 1px 4px rgba(0,0,0,0.5)',
+  ].join(';');
+
+  container.appendChild(spinner);
+  container.appendChild(label);
+  document.documentElement.appendChild(container);
+  return container;
+}
+
+function removeProcessingOverlay() {
+  const el = document.getElementById('snapshot-processing');
+  if (el) el.remove();
+}
+
+function showToast(msg, isError) {
+  const toast = document.createElement('div');
+  toast.id = 'snapshot-toast';
+  toast.textContent = msg;
+  toast.style.cssText = [
+    'position:fixed',
+    'bottom:24px',
+    'left:50%',
+    'transform:translateX(-50%)',
+    'z-index:2147483647',
+    `background:${isError ? 'rgba(220,38,38,0.92)' : 'rgba(22,163,74,0.92)'}`,
+    'color:#fff',
+    'font:500 13px/1.4 "Inter",system-ui,sans-serif',
+    'padding:10px 24px',
+    'border-radius:8px',
+    'box-shadow:0 4px 20px rgba(0,0,0,0.4)',
+    'pointer-events:none',
+    'transition:opacity 0.4s',
+    'opacity:1',
+  ].join(';');
+  document.documentElement.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; }, 2800);
+  setTimeout(() => { toast.remove(); }, 3400);
+}
+
+/**
+ * Temporarily disable @media print rules so html2canvas sees the screen styles.
+ * Returns a restore function.
+ */
+function neutralizePrintStyles() {
+  const disabled = [];
+  for (const sheet of document.styleSheets) {
+    try {
+      for (let i = 0; i < sheet.cssRules.length; i++) {
+        const rule = sheet.cssRules[i];
+        if (rule instanceof CSSMediaRule && /\bprint\b/.test(rule.conditionText)) {
+          // Disable by changing conditionText is not possible via CSSOM,
+          // so we delete the rule and store it for restoration.
+          disabled.push({ sheet, index: i, text: rule.cssText });
+        }
+      }
+    } catch (_) {
+      // Cross-origin stylesheets throw — skip silently
+    }
+  }
+  // Delete in reverse order to preserve indices
+  for (let j = disabled.length - 1; j >= 0; j--) {
+    disabled[j].sheet.deleteRule(disabled[j].index);
+  }
+  return function restore() {
+    // Re-insert in original order
+    for (const entry of disabled) {
+      try {
+        entry.sheet.insertRule(entry.text, Math.min(entry.index, entry.sheet.cssRules.length));
+      } catch (_) { /* ignore */ }
+    }
+  };
+}
+
+async function renderSelectedElement() {
+  if (!selectedElement) {
+    console.warn('[Project Snapshot] No element selected for rendering.');
+    return;
+  }
+
+  const processingEl = createProcessingOverlay();
+
+  try {
+    // Ensure html2canvas is available (injected by background.js)
+    if (typeof html2canvas !== 'function') {
+      throw new Error('html2canvas library is not available. Please reload the extension.');
+    }
+
+    console.log('[Project Snapshot] Starting html2canvas render…', buildLabel(selectedElement));
+
+    // Neutralize @media print rules before rendering
+    const restorePrintStyles = neutralizePrintStyles();
+
+    try {
+      renderedCanvas = await html2canvas(selectedElement, {
+        scale: 2,               // High-DPI output (retina quality)
+        useCORS: true,          // Handle cross-origin images
+        allowTaint: false,      // Don't taint the canvas with non-CORS images
+        removeContainer: true,  // Clean up temporary clone container
+        logging: false,         // Suppress html2canvas console noise
+        backgroundColor: null,  // Preserve transparency if element has it
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight,
+      });
+    } finally {
+      // Always restore print styles, even if html2canvas throws
+      restorePrintStyles();
+    }
+
+    console.log(
+      '[Project Snapshot] Canvas rendered:',
+      renderedCanvas.width, 'x', renderedCanvas.height,
+      `(${(renderedCanvas.width / 2)}x${(renderedCanvas.height / 2)} CSS px)`
+    );
+
+    removeProcessingOverlay();
+    showToast('✅ Element captured! Generating PDF…', false);
+
+    // TODO (SNAP-006): Pass renderedCanvas to the PDF export pipeline
+    console.log('[Project Snapshot] Canvas ready for PDF export. Size:',
+      renderedCanvas.width, 'x', renderedCanvas.height);
+
+  } catch (err) {
+    console.error('[Project Snapshot] Rendering error:', err);
+    removeProcessingOverlay();
+    showToast(`❌ Capture failed: ${err.message}`, true);
+    renderedCanvas = null;
+  }
+}
+
 // ─── Mode lifecycle ───────────────────────────────────────────────────────────
 
 function enterSelectionMode() {
@@ -211,7 +381,8 @@ function exitSelectionMode(cancelled) {
     console.log('[Project Snapshot] Selection mode CANCELLED.');
   } else {
     console.log('[Project Snapshot] Selection mode COMPLETE — element stored:', selectedElement);
-    // TODO (SNAP-005): Trigger the rendering pipeline with selectedElement
+    // SNAP-005: Trigger the rendering pipeline
+    renderSelectedElement();
   }
 }
 

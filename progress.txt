@@ -92,3 +92,70 @@ Patterns discovered:
 Gotchas:
 - Tooltip must have pointer-events:none otherwise it intercepts mousemove events causing flickering.
 - Overlay CSS transition should be short (~60ms) — longer values lag behind fast mouse movement.
+
+---
+
+[2026-03-26 17:49] - SNAP-004
+Active Skills: None
+
+## What was implemented
+
+SNAP-004 (Interactive Element Selector — Click to Select & Event Interception):
+
+- Added `selectedElement` global state that persists the clicked DOM node for the rendering pipeline (SNAP-005+).
+- Enhanced `onElementClick` with `stopImmediatePropagation` in addition to `stopPropagation` + `preventDefault` to prevent ANY page handler from seeing the click event.
+- Added `onSuppressEvent` handler that intercepts `mousedown`, `mouseup`, `pointerdown`, `pointerup`, `auxclick`, `contextmenu`, and `dblclick` during selection mode — prevents unintended page interactions such as drag-select, button effects, link activation, and context menus.
+- ESC key continues to cancel and cleans up all overlays + clears `selectedElement`.
+- On successful click: overlays are removed, event listeners torn down, `selectedElement` retained for the rendering pipeline.
+
+## Files changed
+
+content.js, prd.json (SNAP-004 passes: true)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- Use `stopImmediatePropagation` (not just `stopPropagation`) to prevent other capture-phase listeners on the same element from firing.
+- Suppressing `mousedown` and `pointerdown` is critical — without it, clicking a link in selection mode can still trigger navigation via `mousedown`-based JavaScript handlers.
+- Always intercept `auxclick` (middle-click) and `contextmenu` (right-click) too, not just `click`.
+
+Gotchas:
+- `currentTarget` should be nulled on exit to avoid stale references preventing GC, but `selectedElement` must be preserved across the lifecycle boundary for SNAP-005.
+
+---
+
+[2026-03-26 17:52] - SNAP-005
+Active Skills: None
+
+## What was implemented
+
+SNAP-005 (Rendering Engine — DOM-to-Canvas via html2canvas):
+
+- Added `renderedCanvas` global state to hold the html2canvas output for the PDF pipeline.
+- `renderSelectedElement()` — async function that:
+  1. Shows a full-screen processing overlay with animated spinner and "Rendering element…" label (backdrop-filter blur).
+  2. Calls `neutralizePrintStyles()` to temporarily delete all `@media print` CSS rules from stylesheets, ensuring html2canvas sees only screen styles.
+  3. Invokes `html2canvas(selectedElement, { scale:2, useCORS:true, allowTaint:false, removeContainer:true, backgroundColor:null })` for high-DPI, cross-origin-safe rendering.
+  4. Restores print styles in a `finally` block (always runs even on error).
+  5. On success: removes processing overlay, shows green success toast, stores canvas in `renderedCanvas`.
+  6. On failure: removes processing overlay, shows red error toast with message, clears `renderedCanvas`.
+- `neutralizePrintStyles()` — iterates all document stylesheets, finds `@media print` rules, deletes them (reverse order to preserve indices), and returns a `restore()` closure that re-inserts them.
+- `createProcessingOverlay()` / `removeProcessingOverlay()` — full-screen dark overlay with CSS spinner animation.
+- `showToast(msg, isError)` — bottom-center toast notification with auto-fadeout after 2.8s and removal after 3.4s.
+- `exitSelectionMode(false)` now calls `renderSelectedElement()` instead of the previous TODO placeholder.
+
+## Files changed
+
+content.js, prd.json (SNAP-005 passes: true)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- html2canvas is injected via `chrome.scripting.executeScript` in the MAIN world (background.js) before the content script runs, so `html2canvas` is available as a global in the page context. Content scripts run in an isolated world by default — if html2canvas isn't visible, it means the lib injection and content script are in different worlds. Current setup works because content.js is registered in manifest.json and runs in the page's main world context alongside the injected libs.
+- `neutralizePrintStyles()` must delete rules in reverse index order — otherwise deleting rule at index 2 shifts rule at index 3 to index 2, causing off-by-one errors.
+- `backgroundColor: null` in html2canvas preserves the element's actual background (including transparency), rather than forcing a white background.
+
+Gotchas:
+- Cross-origin stylesheets throw a SecurityError when accessing `sheet.cssRules` — the `try/catch` in `neutralizePrintStyles` is essential.
+- html2canvas does not support all CSS features (e.g., CSS Grid, some flexbox edge cases, backdrop-filter). This is a known limitation — the output is "good enough" for most real-world captures.
+- The processing overlay must be cleaned up in both success and error paths — using try/catch ensures no phantom overlays remain on the page.
