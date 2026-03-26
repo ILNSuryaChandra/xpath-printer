@@ -59,3 +59,36 @@ prd.json (SNAP-002 `passes: true`)
 Patterns discovered:
 - When stories overlap in implementation scope, verify AC line-by-line before coding — avoids double work.
 - The popup's async message pattern (popup → background → content script) means the popup can safely close after the background acknowledges success; it does not need to wait for the content script to finish.
+
+---
+
+[2026-03-26 17:46] - SNAP-003
+Active Skills: None
+
+## What was implemented
+
+SNAP-003 (Interactive Element Selector — Hover Highlight) — full content.js rewrite:
+
+- enterSelectionMode() creates three injected elements:
+  - #snapshot-overlay  position:absolute blue semi-transparent box tracking the hovered element
+  - #snapshot-tooltip  monospace label showing the element's tag, id, and up to 3 classes
+  - #snapshot-banner   fixed top-of-page toast: "Click any element to capture it. Press ESC to cancel."
+- onMouseMove repositions overlay + tooltip on every mousemove (capture phase)
+- onKeyDown — ESC triggers exitSelectionMode (cancelled)
+- onElementClick — stopPropagation/preventDefault stub; extended in SNAP-004
+- exitSelectionMode() removes all injected elements and event listeners; clean teardown
+
+## Files changed
+
+content.js, prd.json (SNAP-003 passes: true)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- Use position:absolute (not fixed) for the overlay; scroll-adjust with window.scrollY/scrollX so it stays on the element when the page scrolls.
+- Append injected elements to document.documentElement, not body (body may have overflow:hidden).
+- All event listeners use capture phase (3rd arg true) so they fire before the page's own handlers.
+
+Gotchas:
+- Tooltip must have pointer-events:none otherwise it intercepts mousemove events causing flickering.
+- Overlay CSS transition should be short (~60ms) — longer values lag behind fast mouse movement.

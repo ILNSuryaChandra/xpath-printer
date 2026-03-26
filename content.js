@@ -7,6 +7,7 @@ console.log('[Project Snapshot] Content script loaded.');
 // ─── State ────────────────────────────────────────────────────────────────────
 let selectionActive = false;
 let currentTarget = null;
+let selectedElement = null;  // SNAP-004: Persisted target for the rendering pipeline
 
 // ─── Injected DOM elements ────────────────────────────────────────────────────
 let overlay = null;      // blue semi-transparent highlight box
@@ -125,12 +126,33 @@ function onKeyDown(e) {
   }
 }
 
-// Exposed globally so SNAP-004 can attach a click handler on top
+// SNAP-004: Click to Select — intercept and store the selected element
 function onElementClick(e) {
+  if (!selectionActive) return;
+
+  // Intercept the click so it doesn't trigger page navigation / buttons
   e.stopPropagation();
+  e.stopImmediatePropagation();
   e.preventDefault();
-  // SNAP-004 extends this; base implementation just exits
+
+  // Ignore clicks on our own injected elements (shouldn't happen due to pointer-events:none, but just in case)
+  if (e.target === overlay || e.target === tooltip || e.target === banner) return;
+
+  // Store the element that was under the cursor when the user clicked
+  selectedElement = currentTarget || e.target;
+  console.log('[Project Snapshot] Element selected:', buildLabel(selectedElement), selectedElement);
+
+  // Exit selection mode — overlays are removed, but selectedElement is kept
   exitSelectionMode(false);
+}
+
+// SNAP-004: Also intercept mousedown, mouseup, and pointerdown during selection mode
+// to prevent unintended interactions (e.g., drag-select, button effects, link activation)
+function onSuppressEvent(e) {
+  if (!selectionActive) return;
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  e.preventDefault();
 }
 
 // ─── Mode lifecycle ───────────────────────────────────────────────────────────
@@ -138,14 +160,25 @@ function onElementClick(e) {
 function enterSelectionMode() {
   if (selectionActive) return;
   selectionActive = true;
+  selectedElement = null; // Reset any previous selection
 
   overlay  = createOverlay();
   tooltip  = createTooltip();
   banner   = createBanner();
 
-  document.addEventListener('mousemove', onMouseMove, true);
-  document.addEventListener('keydown',   onKeyDown,   true);
-  document.addEventListener('click',     onElementClick, true);
+  // Capture phase (3rd arg true) — fire before page handlers
+  document.addEventListener('mousemove',   onMouseMove,     true);
+  document.addEventListener('keydown',     onKeyDown,       true);
+  document.addEventListener('click',       onElementClick,  true);
+
+  // SNAP-004: Suppress additional events to prevent unintended page interactions
+  document.addEventListener('mousedown',   onSuppressEvent, true);
+  document.addEventListener('mouseup',     onSuppressEvent, true);
+  document.addEventListener('pointerdown', onSuppressEvent, true);
+  document.addEventListener('pointerup',   onSuppressEvent, true);
+  document.addEventListener('auxclick',    onSuppressEvent, true); // middle clicks, etc.
+  document.addEventListener('contextmenu', onSuppressEvent, true); // right-click menu
+  document.addEventListener('dblclick',    onSuppressEvent, true); // double clicks
 
   console.log('[Project Snapshot] Selection mode ACTIVE.');
 }
@@ -154,20 +187,31 @@ function exitSelectionMode(cancelled) {
   if (!selectionActive) return;
   selectionActive = false;
 
-  document.removeEventListener('mousemove', onMouseMove, true);
-  document.removeEventListener('keydown',   onKeyDown,   true);
-  document.removeEventListener('click',     onElementClick, true);
+  // Remove all event listeners
+  document.removeEventListener('mousemove',   onMouseMove,     true);
+  document.removeEventListener('keydown',     onKeyDown,       true);
+  document.removeEventListener('click',       onElementClick,  true);
+  document.removeEventListener('mousedown',   onSuppressEvent, true);
+  document.removeEventListener('mouseup',     onSuppressEvent, true);
+  document.removeEventListener('pointerdown', onSuppressEvent, true);
+  document.removeEventListener('pointerup',   onSuppressEvent, true);
+  document.removeEventListener('auxclick',    onSuppressEvent, true);
+  document.removeEventListener('contextmenu', onSuppressEvent, true);
+  document.removeEventListener('dblclick',    onSuppressEvent, true);
 
   // Clean up all injected DOM elements
   [overlay, tooltip, banner].forEach(el => el && el.remove());
   overlay = null;
   tooltip = null;
   banner  = null;
+  currentTarget = null;
 
   if (cancelled) {
+    selectedElement = null; // Clear on cancel — no element was intentionally selected
     console.log('[Project Snapshot] Selection mode CANCELLED.');
   } else {
-    console.log('[Project Snapshot] Element selected:', currentTarget);
+    console.log('[Project Snapshot] Selection mode COMPLETE — element stored:', selectedElement);
+    // TODO (SNAP-005): Trigger the rendering pipeline with selectedElement
   }
 }
 

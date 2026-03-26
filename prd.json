@@ -53,7 +53,7 @@
       "id": "SNAP-004",
       "title": "Interactive Element Selector — Click to Select & Event Interception",
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want to click on a highlighted element to select it for capture so that the extension knows exactly which DOM node to render, without accidentally triggering page navigation or buttons.",
       "acceptanceCriteria": [
         "Click events are intercepted in selection mode using stopPropagation and preventDefault",
