@@ -1,0 +1,123 @@
+{
+  "project": {
+    "name": "Project Snapshot",
+    "type": "Chrome Extension (Manifest V3)",
+    "summary": "A Chrome extension that bypasses web-based print restrictions by allowing users to select a DOM element and export it as a high-fidelity, editable PDF — ignoring CSS print-protection rules.",
+    "branchName": "main"
+  },
+  "dependencies": ["html2canvas.js", "jspdf.js"],
+  "permissions": ["scripting", "activeTab"],
+  "stories": [
+    {
+      "id": "SNAP-001",
+      "title": "Extension Scaffold & Manifest V3 Setup",
+      "priority": 1,
+      "passes": false,
+      "description": "As a developer, I want a valid Chrome Manifest V3 extension scaffold so that the extension can be loaded into Chrome and forms the foundation for all other features.",
+      "acceptanceCriteria": [
+        "manifest.json uses Manifest V3 format with version, name, description, and icons fields",
+        "Permissions include 'scripting' and 'activeTab'",
+        "A background service worker is registered",
+        "A popup HTML page is defined as the default_popup",
+        "Extension loads in Chrome without errors via chrome://extensions (Developer mode)"
+      ]
+    },
+    {
+      "id": "SNAP-002",
+      "title": "Popup UI — Activate Selection Mode Button",
+      "priority": 2,
+      "passes": false,
+      "description": "As a user, I want to click the extension icon and see a clear 'Capture Element' button so that I can activate the interactive selection mode on the current page.",
+      "acceptanceCriteria": [
+        "Popup renders a styled button labeled 'Capture Element'",
+        "Clicking the button sends a message to the content script to enter selection mode",
+        "Popup closes after activation so it does not obscure the page",
+        "Button shows a loading/active state while selection mode is active"
+      ]
+    },
+    {
+      "id": "SNAP-003",
+      "title": "Interactive Element Selector — Hover Highlight",
+      "priority": 3,
+      "passes": false,
+      "description": "As a user, I want elements to be highlighted with a blue semi-transparent overlay as I hover over them so that I can visually identify which element I am about to capture.",
+      "acceptanceCriteria": [
+        "Content script enters 'selection mode' when triggered by the popup",
+        "Hovering over any DOM element shows a blue semi-transparent overlay on that element",
+        "Moving the mouse updates the highlight to the new element under the cursor",
+        "A label or tooltip shows the element's tag and class/id for identification",
+        "The overlay does not affect the page layout (uses position:fixed or outline approach)"
+      ]
+    },
+    {
+      "id": "SNAP-004",
+      "title": "Interactive Element Selector — Click to Select & Event Interception",
+      "priority": 4,
+      "passes": false,
+      "description": "As a user, I want to click on a highlighted element to select it for capture so that the extension knows exactly which DOM node to render, without accidentally triggering page navigation or buttons.",
+      "acceptanceCriteria": [
+        "Click events are intercepted in selection mode using stopPropagation and preventDefault",
+        "The clicked element is stored as the target for the rendering pipeline",
+        "Selection mode exits after a click (overlay is removed)",
+        "An ESC key press also cancels selection mode and cleans up all overlays",
+        "No page navigation or unintended actions occur when clicking in selection mode"
+      ]
+    },
+    {
+      "id": "SNAP-005",
+      "title": "Rendering Engine — DOM-to-Canvas via html2canvas",
+      "priority": 5,
+      "passes": false,
+      "description": "As a user, I want the selected element to be rendered to a canvas exactly as it appears on screen so that print-protection CSS rules (e.g., @media print { display: none }) are completely bypassed.",
+      "acceptanceCriteria": [
+        "html2canvas.js is bundled and available in the content script context",
+        "html2canvas is called on the selected element with scale:2 for high-DPI output",
+        "useCORS:true is set to handle cross-origin images and assets",
+        "The rendered canvas accurately reflects the element's on-screen visual appearance",
+        "No @media print rules are applied — the capture is purely screen-rendered"
+      ]
+    },
+    {
+      "id": "SNAP-006",
+      "title": "PDF Export — Canvas to A4 PDF via jsPDF",
+      "priority": 6,
+      "passes": false,
+      "description": "As a user, I want the rendered canvas to be automatically converted into an A4 PDF and downloaded to my computer so that I get a professional, portable document.",
+      "acceptanceCriteria": [
+        "jspdf.js is bundled and available in the content script or service worker context",
+        "Canvas is converted to a PNG data URL and added to a jsPDF document",
+        "Image is scaled to fit the A4 page (210mm x 297mm) with correct aspect ratio",
+        "PDF is downloaded via a link click with filename 'snapshot_export.pdf'",
+        "PDF quality is crisp (no blurriness) due to the 2x render scale"
+      ]
+    },
+    {
+      "id": "SNAP-007",
+      "title": "End-to-End Flow — Real-World Print-Protected Site Test",
+      "priority": 7,
+      "passes": false,
+      "description": "As a user, I want to successfully capture a resume from a print-protected site (e.g., BeamJobs) and download it as a PDF so that I can confirm the extension solves the core use case.",
+      "acceptanceCriteria": [
+        "Standard Cmd+P on BeamJobs produces a blank or white page (documents the problem)",
+        "Using the extension on the same page produces a correct PDF of the resume element",
+        "Layout, fonts, colors, and images in the PDF match the on-screen view",
+        "The PDF is downloadable and openable in a standard PDF reader",
+        "The captured PDF covers the full element height, even if it extends beyond the viewport"
+      ]
+    },
+    {
+      "id": "SNAP-008",
+      "title": "Polish — User Feedback & Error Handling",
+      "priority": 8,
+      "passes": false,
+      "description": "As a user, I want to see progress feedback during capture and a clear error message if something goes wrong so that I am never left confused about the status of my export.",
+      "acceptanceCriteria": [
+        "A 'Processing...' indicator is shown while html2canvas is rendering",
+        "A success notification is shown when the PDF download starts",
+        "If html2canvas or jsPDF throws an error, a user-friendly error message is shown",
+        "Selection mode has a visible on-page banner/toast: 'Click any element to capture it. Press ESC to cancel.'",
+        "Overlay and all injected DOM elements are completely cleaned up after capture or cancellation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Snapshot</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <img src="icons/icon48.png" alt="Project Snapshot Icon" class="logo" />
+      <div class="header-text">
+        <h1 class="title">Project Snapshot</h1>
+        <p class="subtitle">Capture any element as PDF</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="body">
+      <p class="description">
+        Click the button below, then hover over any element on the page and click to capture it as a high-fidelity PDF.
+      </p>
+
+      <button id="capture-btn" class="capture-btn">
+        <span class="btn-icon">📸</span>
+        <span class="btn-label">Capture Element</span>
+      </button>
+
+      <p class="hint">Press <kbd>ESC</kbd> to cancel selection mode.</p>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
