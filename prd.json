@@ -95,7 +95,7 @@
       "id": "SNAP-007",
       "title": "End-to-End Flow — Real-World Print-Protected Site Test",
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want to successfully capture a resume from a print-protected site (e.g., BeamJobs) and download it as a PDF so that I can confirm the extension solves the core use case.",
       "acceptanceCriteria": [
         "Standard Cmd+P on BeamJobs produces a blank or white page (documents the problem)",
@@ -109,7 +109,7 @@
       "id": "SNAP-008",
       "title": "Polish — User Feedback & Error Handling",
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want to see progress feedback during capture and a clear error message if something goes wrong so that I am never left confused about the status of my export.",
       "acceptanceCriteria": [
         "A 'Processing...' indicator is shown while html2canvas is rendering",

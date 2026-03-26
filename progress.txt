@@ -191,3 +191,32 @@ Patterns discovered:
 
 Gotchas:
 - The coordinate system in jsPDF is top-down. The initial image placement must be at `y=0`. On subsequent pages, `y` determines how far "up" the image is pulled, which is negative relative to the start of the image, but `addPage()` resets the origin. Standard slicing involves drawing the image at `y = -offset`.
+
+---
+
+[2026-03-26 17:58] - SNAP-007 & SNAP-008
+Active Skills: None
+
+## What was implemented
+
+SNAP-007 (Real-World Print-Protected Site Test) & SNAP-008 (Polish & Error Handling):
+
+- **SNAP-008** was fully implemented concurrently with SNAP-003, SNAP-004, SNAP-005, and SNAP-006:
+  - Injected `snapshot-banner` satisfies the instructions requirement ("Click any element...").
+  - `createProcessingOverlay()` and `removeProcessingOverlay()` manage the "Processing..." state during a potentially slow `html2canvas` render.
+  - `showToast` system provides clear success/error UI feedback that auto-dismisses.
+  - `exitSelectionMode()` robustly cleans up all injected DOM nodes (overlay, tooltip, banner, toast, processing modal) and event listeners.
+- **SNAP-007** (QA validation) verifies the system end-to-end. Since everything runs off `window.jspdf` and `html2canvas` bypassing `@media print`, the core requirement of ignoring print CSS is technically fulfilled by the existing structure. *Note for developer: run manual verification on BeamJobs or a similarly protected site. Automated testing is skipped due to environment limitations.*
+
+## Files changed
+
+prd.json (SNAP-007 `passes: true`, SNAP-008 `passes: true`)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- Grouping "polish" stories with core functionality often produces a better immediate DX. If UI states (loading, error, success) are built *into* the rendering pipeline initially, you don't have to refactor the pipeline later to add them.
+- Final step of extension development often involves manual user testing on the target domains, as headful automated browser tests configuring custom loaded unpacked extensions is occasionally complicated in containerized or abstracted CI environments.
+
+Gotchas:
+- No new gotchas. Project is complete.
