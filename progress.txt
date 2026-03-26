@@ -1,0 +1,37 @@
+## Codebase Patterns
+
+- Libraries (html2canvas, jsPDF) are bundled locally in `libs/` and injected via `chrome.scripting.executeScript` in the background service worker **before** messaging the content script.
+- Content script is registered via `manifest.json` `content_scripts` array (not injected programmatically), so it is always present and ready to receive messages.
+- The popup sends a message to the background worker with the tab ID; it does NOT talk to the content script directly.
+
+---
+
+[2026-03-26 13:49] - SNAP-001
+Active Skills: None
+
+## What was implemented
+
+Created the complete Chrome Manifest V3 extension scaffold for "Project Snapshot":
+
+- `manifest.json` — MV3 format with permissions (scripting, activeTab), background service worker, popup, content script registration, and web_accessible_resources for bundled libs.
+- `background.js` — Service worker that handles ACTIVATE_SELECTION messages from the popup: injects html2canvas + jsPDF into the target tab, then sends ENTER_SELECTION_MODE to the content script.
+- `popup.html` + `popup.css` + `popup.js` — Premium dark-themed popup UI with "Capture Element" button, active/loading states, and auto-close after activation.
+- `content.js` — Stub content script that listens for ENTER_SELECTION_MODE (full logic added in SNAP-003+).
+- `icons/` — 16px, 48px, 128px icons generated and resized via sips.
+- `libs/` — html2canvas 1.4.1 and jsPDF 2.5.1 UMD bundles downloaded from cdnjs.
+
+## Files changed
+
+manifest.json, background.js, popup.html, popup.css, popup.js, content.js, icons/icon128.png, icons/icon48.png, icons/icon16.png, libs/html2canvas.min.js, libs/jspdf.umd.min.js
+
+## Learnings for future iterations
+
+Patterns discovered:
+- Chrome MV3 does not allow eval/remote scripts; all libs must be bundled locally in the extension directory and declared in web_accessible_resources.
+- Service workers (background.js) in MV3 cannot use XMLHttpRequest — use fetch instead.
+- chrome.scripting.executeScript requires the "scripting" permission AND the tab URL must match host_permissions or activeTab must be granted.
+- The popup auto-closes after activation so the user can see and interact with the page — this is intentional UX.
+
+Gotchas encountered:
+- sips on macOS warns "Output file suffix should be jpg" when outputting PNGs — this is harmless; the files are valid PNGs.
+- html2canvas CDN URL had a redirect; curl -sL (follow redirects) was needed.

@@ -12,7 +12,7 @@
       "id": "SNAP-001",
       "title": "Extension Scaffold & Manifest V3 Setup",
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "description": "As a developer, I want a valid Chrome Manifest V3 extension scaffold so that the extension can be loaded into Chrome and forms the foundation for all other features.",
       "acceptanceCriteria": [
         "manifest.json uses Manifest V3 format with version, name, description, and icons fields",
