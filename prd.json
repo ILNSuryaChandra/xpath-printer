@@ -26,7 +26,7 @@
       "id": "SNAP-002",
       "title": "Popup UI — Activate Selection Mode Button",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want to click the extension icon and see a clear 'Capture Element' button so that I can activate the interactive selection mode on the current page.",
       "acceptanceCriteria": [
         "Popup renders a styled button labeled 'Capture Element'",

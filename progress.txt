@@ -35,3 +35,27 @@ Patterns discovered:
 Gotchas encountered:
 - sips on macOS warns "Output file suffix should be jpg" when outputting PNGs — this is harmless; the files are valid PNGs.
 - html2canvas CDN URL had a redirect; curl -sL (follow redirects) was needed.
+
+---
+
+[2026-03-26 13:50] - SNAP-002
+Active Skills: None
+
+## What was implemented
+
+SNAP-002 (Popup UI — Activate Selection Mode Button) was fully satisfied by the implementation delivered in SNAP-001. Full audit confirms all acceptance criteria pass:
+
+- A styled "Capture Element" button is rendered in the popup.
+- Clicking the button sends an ACTIVATE_SELECTION message to background.js, which then injects libs and messages the content script.
+- The popup closes automatically ~800ms after successful activation (`setTimeout(() => window.close(), 800)`).
+- The button shows an in-flight "Activating…" label while awaiting the response, and switches to a green pulsing `.active` state on success.
+
+## Files changed
+
+prd.json (SNAP-002 `passes: true`)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- When stories overlap in implementation scope, verify AC line-by-line before coding — avoids double work.
+- The popup's async message pattern (popup → background → content script) means the popup can safely close after the background acknowledges success; it does not need to wait for the content script to finish.
