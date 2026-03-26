@@ -159,3 +159,35 @@ Gotchas:
 - Cross-origin stylesheets throw a SecurityError when accessing `sheet.cssRules` — the `try/catch` in `neutralizePrintStyles` is essential.
 - html2canvas does not support all CSS features (e.g., CSS Grid, some flexbox edge cases, backdrop-filter). This is a known limitation — the output is "good enough" for most real-world captures.
 - The processing overlay must be cleaned up in both success and error paths — using try/catch ensures no phantom overlays remain on the page.
+
+---
+
+[2026-03-26 17:55] - SNAP-006
+Active Skills: None
+
+## What was implemented
+
+SNAP-006 (PDF Export — Canvas to A4 PDF via jsPDF):
+
+- Added `generatePDF(canvas)` function that takes the `html2canvas` output and converts it to a multi-page A4 PDF using `jspdf`.
+- Configured jsPDF for portrait A4 format (210mm x 297mm).
+- Extracted a PNG data URL from the canvas (`toDataURL('image/png', 1.0)`).
+- Calculated aspect-ratio-preserving dimensions to fit the image to the A4 page width (210mm).
+- Implemented multi-page support: if the scaled image height exceeds 297mm, it loops to add new pages (`pdf.addPage()`) and offsets the image Y-position (`position = heightLeft - pdfImgHeight`) so the correct vertical slice is visible on each page.
+- Triggers `pdf.save('snapshot_export.pdf')` to download the file directly to the user's default browser downloads folder.
+- Added success and error `showToast` feedback.
+- Tied `generatePDF` into the `renderSelectedElement` pipeline right after canvas generation.
+
+## Files changed
+
+content.js, prd.json (SNAP-006 passes: true)
+
+## Learnings for future iterations
+
+Patterns discovered:
+- jsPDF UMD exposes itself as `window.jspdf.jsPDF`.
+- To split a single tall image across multiple PDF pages, you re-draw the same image on each new page but shift its negative Y-coordinate up by the total height already rendered.
+- Aspect ratio math uses the raw `canvas.width` and `canvas.height` and maps it to the PDF's internal page width (`pdf.internal.pageSize.getWidth()`).
+
+Gotchas:
+- The coordinate system in jsPDF is top-down. The initial image placement must be at `y=0`. On subsequent pages, `y` determines how far "up" the image is pulled, which is negative relative to the start of the image, but `addPage()` resets the origin. Standard slicing involves drawing the image at `y = -offset`.

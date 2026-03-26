@@ -313,15 +313,68 @@ async function renderSelectedElement() {
     removeProcessingOverlay();
     showToast('✅ Element captured! Generating PDF…', false);
 
-    // TODO (SNAP-006): Pass renderedCanvas to the PDF export pipeline
+    // SNAP-006: Pass renderedCanvas to the PDF export pipeline
     console.log('[Project Snapshot] Canvas ready for PDF export. Size:',
       renderedCanvas.width, 'x', renderedCanvas.height);
+      
+    generatePDF(renderedCanvas);
 
   } catch (err) {
     console.error('[Project Snapshot] Rendering error:', err);
     removeProcessingOverlay();
     showToast(`❌ Capture failed: ${err.message}`, true);
     renderedCanvas = null;
+  }
+}
+
+// ─── SNAP-006: PDF Export ─────────────────────────────────────────────────────
+
+function generatePDF(canvas) {
+  try {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) throw new Error('jsPDF library is not loaded');
+
+    // A4 dimensions in mm: 210 x 297
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth(); // 210
+    const pageHeight = pdf.internal.pageSize.getHeight(); // 297
+
+    // Converting canvas to high-quality PNG
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Calculate aspect ratio width-fit
+    const ratio = canvasWidth / canvasHeight;
+    const pdfImgWidth = pageWidth;
+    const pdfImgHeight = pageWidth / ratio;
+
+    let heightLeft = pdfImgHeight;
+    let position = 0;
+
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+    heightLeft -= pageHeight;
+
+    // Add subsequent pages if the element is taller than one A4 page
+    while (heightLeft > 0) {
+      position = heightLeft - pdfImgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, pdfImgWidth, pdfImgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    // Download the actual file
+    pdf.save('snapshot_export.pdf');
+    showToast('🎉 PDF downloaded successfully!', false);
+  } catch (err) {
+    console.error('[Project Snapshot] PDF generation error:', err);
+    showToast(`❌ PDF Error: ${err.message}`, true);
   }
 }
 

@@ -81,7 +81,7 @@
       "id": "SNAP-006",
       "title": "PDF Export — Canvas to A4 PDF via jsPDF",
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "description": "As a user, I want the rendered canvas to be automatically converted into an A4 PDF and downloaded to my computer so that I get a professional, portable document.",
       "acceptanceCriteria": [
         "jspdf.js is bundled and available in the content script or service worker context",
